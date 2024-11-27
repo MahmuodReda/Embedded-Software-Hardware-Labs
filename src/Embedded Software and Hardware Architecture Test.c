@@ -8,31 +8,34 @@ typedef enum {
 } Endianness;
 
 /**
- * @brief: Swaps the byte order of a 32-bit unsigned integer.
+ * @brief: Swaps the byte order of a 32-bit unsigned integer in place.
  *         Converts the input value between Little Endian and Big Endian.
- * @param value: The 32-bit unsigned integer to be swapped.
- * @param mode: Specifies the desired byte order (LITTLE_ENDIAN or BIG_ENDIAN).
- *              - LITTLE_ENDIAN: Convert to Little Endian
- *              - BIG_ENDIAN: Convert to Big Endian
- * @retval: Returns the value with its byte order swapped if the mode is valid.
- *          If the mode is invalid, it returns the original value.
+ * @param ptr: Pointer to the 32-bit unsigned integer to be swapped.
  */
-uint32_t swap_endianness(uint32_t value, Endianness mode) {
-    uint32_t swapped;  // Variable to hold the swapped result
+void byte_swap32(uint32_t *ptr) {
+    uint8_t i, temp_byte;  // Temporary storage for byte swapping
 
-    // Check if the mode is either BIG_ENDIAN or LITTLE_ENDIAN
-    if (mode == BIG_ENDIAN || mode == LITTLE_ENDIAN) {
-        // Perform byte swapping
-        swapped = ((value & 0x000000FF) << 24) |  // Move the least significant byte to the most significant position
-                  ((value & 0x0000FF00) << 8)  |  // Move the second least significant byte two positions up
-                  ((value & 0x00FF0000) >> 8)  |  // Move the second most significant byte two positions down
-                  ((value & 0xFF000000) >> 24);   // Move the most significant byte to the least significant position
-    } else {
-        // If the mode is invalid, return the original value
-        swapped = value;
+    // Loop to swap bytes in place
+    for (i = 0; i < 2; i++) {
+        // Swap the i-th byte with the (3-i)-th byte
+        temp_byte = *((uint8_t*)ptr + (3 - i));  // Store the (3-i)-th byte
+        *((uint8_t*)ptr + (3 - i)) = *((uint8_t*)ptr + i);  // Move i-th byte to (3-i)
+        *((uint8_t*)ptr + i) = temp_byte;  // Place the stored byte in the i-th position
     }
+}
 
-    return swapped;  // Return the swapped value or the original value
+/**
+ * @brief: Prints the memory layout of a 32-bit integer in bytes.
+ * @param value: The 32-bit unsigned integer to be displayed.
+ */
+void print_memory_layout(uint32_t value) {
+    uint8_t* byte_ptr = (uint8_t*)&value;  // Treat the value as an array of bytes
+
+    printf("Memory Layout (Address : Data):\n");
+    for (int i = 0; i < 4; i++) {
+        printf("Address 0x%02X: 0x%02X\n", i, byte_ptr[i]);
+    }
+    printf("\n");
 }
 
 int main() {
@@ -40,18 +43,26 @@ int main() {
 
     // Print the original value in hexadecimal format
     printf("Original value: 0x%08X\n", num);
+    print_memory_layout(num);  // Print Little Endian memory layout
 
-    // Convert the value to Big Endian and print the result
-    uint32_t big_endian = swap_endianness(num, BIG_ENDIAN);
-    printf("Big Endian: 0x%08X\n", big_endian);
-
-    // Convert the value back to Little Endian and print the result
-    uint32_t little_endian = swap_endianness(big_endian, LITTLE_ENDIAN);
-    printf("Little Endian: 0x%08X\n", little_endian);
+    // Swap the endianness using byte_swap32
+    byte_swap32(&num);
+    printf("After byte swapping:\n");
+    print_memory_layout(num);  // Print the new memory layout after swapping
 
     return 0;
 }
 
 //	Original value: 0x12345678
-//	Big Endian: 0x78563412
-//	Little Endian: 0x12345678
+//	Memory Layout (Address : Data):
+//	Address 0x00: 0x78
+//	Address 0x01: 0x56
+//	Address 0x02: 0x34
+//	Address 0x03: 0x12
+//
+//	After byte swapping:
+//	Memory Layout (Address : Data):
+//	Address 0x00: 0x12
+//	Address 0x01: 0x34
+//	Address 0x02: 0x56
+//	Address 0x03: 0x78
