@@ -1,90 +1,106 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 /*
  * =============================================================================
- * VOID POINTER EXAMPLE (Without malloc)
+ * VOID POINTERS (Generic Pointers)
  * =============================================================================
- *
- * This example demonstrates a void pointer that simply tracks the address
- * of a local variable. Here, we do not allocate memory dynamically.
+ * A void pointer (void*) is used to store the address of any data type.
+ * It does not have an inherent type, so it cannot be dereferenced without an explicit typecast.
  *
  * Memory Consideration:
- * - The local variable 'x' is stored on the Stack.
- * - The void pointer 'vp' is also stored on the Stack.
+ * - Memory allocated via malloc() is on the Heap.
+ * - The void pointer variable, if declared locally, is stored on the Stack.
  *
- * Key Points:
- * - A void pointer holds a generic address and must be cast to a specific type
- *   before dereferencing.
+ * Important Notes:
+ * - Must cast to the appropriate type before dereferencing.
+ * - Pointer arithmetic is not permitted on a void pointer because the size of the data it points to is unknown.
  */
-void demonstrate_void_pointer_no_malloc() {
-    int x = 321;               // Local variable on the Stack
-    void *vp = &x;             // Assign the address of x to a void pointer
-    // Expected output: Value via void pointer (no malloc): 321
-    printf("Value via void pointer (no malloc): %d\n", *((int *)vp));
+void demonstrate_void_pointer() {
+    // Allocate memory on the Heap for one integer.
+    void *vp = malloc(sizeof(int));
+    if (vp == NULL) {
+        printf("Memory allocation failed\n");
+        return;
+    }
+
+    // Cast the void pointer to an int pointer and assign a value.
+    *((int *)vp) = 123;
+    // Expected output: Value via void pointer: 123
+    printf("Value via void pointer: %d\n", *((int *)vp));
+
+    // Free the allocated Heap memory to prevent memory leaks.
+    free(vp);
 }
 
 /*
  * =============================================================================
- * DOUBLE POINTER EXAMPLE (Without malloc)
+ * DOUBLE POINTERS (Pointer to Pointer)
  * =============================================================================
- *
- * This example demonstrates a double pointer by updating the address of a pointer
- * using a statically allocated variable.
+ * A double pointer (e.g., int**) stores the address of another pointer.
  *
  * Memory Consideration:
- * - The pointer 'p' is a local variable stored on the Stack.
- * - The function 'updatePointer' assigns 'p' to point to a static variable.
+ * - The double pointer variable is stored on the Stack (if declared locally).
+ * - It points to memory (often allocated on the Heap) that is managed dynamically.
  *
- * Key Points:
- * - The double pointer allows a function to modify the pointer's address directly.
+ * Usage:
+ * - Useful when you want a function to modify the pointer variable (i.e., change the memory address it points to).
+ * - Commonly used in dynamic memory allocation functions.
  */
-void updatePointer(int **pp) {
-    static int static_val = 789;  // Static variable stored in the Data Section (.data)
-    *pp = &static_val;            // Update the pointer to point to the static variable
+void allocate_memory(int **pp) {
+    // Allocate memory on the Heap for one integer and assign its address to *pp.
+    *pp = (int *)malloc(sizeof(int));
+    if (*pp != NULL) {
+        // Set the allocated memory's value to 456.
+        **pp = 456;
+    }
 }
 
-void demonstrate_double_pointer_no_malloc() {
-    int *p = NULL;                // Local pointer on the Stack
-    updatePointer(&p);            // Pass the address of p to updatePointer
+void demonstrate_double_pointer() {
+    int *p = NULL; // Local pointer stored on the Stack.
+    // Pass the address of the pointer so that allocate_memory() can modify it.
+    allocate_memory(&p);
+
     if (p != NULL) {
-        // Expected output: Value from double pointer update: 789
-        printf("Value from double pointer update: %d\n", *p);
+        // Expected output: Value from double pointer allocation: 456
+        printf("Value from double pointer allocation: %d\n", *p);
+        // Free the allocated Heap memory.
+        free(p);
     }
 }
 
 /*
  * =============================================================================
- * RESTRICT QUALIFIED POINTERS EXAMPLE (Without malloc)
+ * RESTRICT QUALIFIED POINTERS
  * =============================================================================
- *
- * This example demonstrates the use of restrict-qualified pointers by summing two arrays.
- * The 'restrict' qualifier informs the compiler that the memory areas referenced by the pointers
- * do not overlap, enabling optimized loop performance.
+ * The 'restrict' qualifier tells the compiler that for the lifetime of the pointer,
+ * only that pointer (or a pointer derived directly from it) will be used to access the memory.
+ * This allows the compiler to optimize code by eliminating redundant memory accesses.
  *
  * Memory Consideration:
- * - The arrays 'a', 'b', and 'result' are all local variables stored on the Stack.
- *
- * Key Points:
- * - The restrict qualifier allows the compiler to assume that the arrays do not alias,
- *   which may lead to improved performance in tight loops.
+ * - Restrict-qualified pointers, when passed as parameters, are stored on the Stack.
+ * - They may point to memory allocated on the Stack (e.g., local arrays) or the Heap (dynamic allocation).
  */
 void sum_arrays(int *restrict a, int *restrict b, int *restrict result, int n) {
+    // Loop through each element; the compiler can optimize this loop assuming a, b, and result do not overlap.
     for (int i = 0; i < n; i++) {
         result[i] = a[i] + b[i];
     }
 }
 
-void demonstrate_restrict_pointer_no_malloc() {
-    int a[] = {2, 4, 6, 8};      // Local array on the Stack
-    int b[] = {1, 3, 5, 7};      // Local array on the Stack
-    int result[4];             // Local array for storing the sum
-    int n = sizeof(a) / sizeof(a[0]);  // Compute array size at compile time
+void demonstrate_restrict_pointer() {
+    // Local arrays stored on the Stack.
+    int arr1[] = {1, 2, 3, 4, 5};
+    int arr2[] = {10, 20, 30, 40, 50};
+    int result[5]; // Local array for storing results.
+    int n = sizeof(arr1) / sizeof(arr1[0]); // Array size computed at compile time.
 
-    // Sum the arrays using restrict-qualified pointers for optimization.
-    sum_arrays(a, b, result, n);
+    // Call sum_arrays() with restrict-qualified pointers.
+    // Expected that 'arr1', 'arr2', and 'result' do not overlap, allowing for compiler optimizations.
+    sum_arrays(arr1, arr2, result, n);
 
-    // Expected output: Summed array (no malloc): 3 7 11 15
-    printf("Summed array (no malloc): ");
+    // Expected output: Summed array: 11 22 33 44 55
+    printf("Summed array: ");
     for (int i = 0; i < n; i++) {
         printf("%d ", result[i]);
     }
@@ -93,36 +109,59 @@ void demonstrate_restrict_pointer_no_malloc() {
 
 /*
  * =============================================================================
+ * MEMORY LAYOUT IN C - Detailed Explanation
+ * =============================================================================
+ * 1. Text Section (.text):
+ *    - Contains the executable machine code (functions such as main, demonstrate_void_pointer, etc.).
+ *    - This section is read-only, protecting the code from modification during execution.
+ *
+ * 2. Data Section (.data and .bss):
+ *    - Stores global and static variables.
+ *    - Initialized globals are in .data, while uninitialized ones are in .bss (zero-initialized at runtime).
+ *
+ * 3. Stack:
+ *    - Used for local variables, function call parameters, and return addresses.
+ *    - Managed automatically in a Last-In-First-Out (LIFO) manner; fast access but limited in size.
+ *    - In our examples, all local variables and function parameters reside on the Stack.
+ *
+ * 4. Heap:
+ *    - Used for dynamic memory allocation (e.g., via malloc or calloc).
+ *    - Memory on the Heap must be managed manually (allocated and freed).
+ *    - Typically larger than the Stack, but with additional overhead due to manual management.
+ *
+ * In our examples:
+ * - The void pointer example allocates an integer on the Heap and uses a local void pointer on the Stack.
+ * - The double pointer example uses a local pointer on the Stack that points to Heap memory allocated dynamically.
+ * - The restrict pointer example uses local arrays on the Stack, and the restrict qualifier allows the compiler to optimize array operations.
+ */
+
+/*
+ * =============================================================================
  * MAIN FUNCTION: Combining All Advanced Pointer Examples
  * =============================================================================
- *
- * This main function calls the three demonstration functions:
- * 1. Void pointer example without malloc.
- * 2. Double pointer example without using malloc (using a static variable).
- * 3. Restrict-qualified pointers example for array summation.
- *
- * All local variables are stored on the Stack, while static variables are stored in the Data Section.
+ * This function calls the demonstration functions for void pointers, double pointers,
+ * and restrict-qualified pointers, and prints expected outputs for each example.
  */
 int main() {
-    printf("\n--- Advanced Pointer Demonstration (Without malloc) in C ---\n\n");
+    printf("\n--- Advanced Pointer Demonstration in C ---\n\n");
 
     /* VOID POINTER DEMONSTRATION */
-    printf("--- Void Pointer Example (No malloc) ---\n");
-    demonstrate_void_pointer_no_malloc();
-    // Expected output: Value via void pointer (no malloc): 321
+    printf("--- Void Pointer Example ---\n");
+    demonstrate_void_pointer();
+    // Expected output: Value via void pointer: 123
     printf("\n");
 
     /* DOUBLE POINTER DEMONSTRATION */
-    printf("--- Double Pointer Example (No malloc) ---\n");
-    demonstrate_double_pointer_no_malloc();
-    // Expected output: Value from double pointer update: 789
+    printf("--- Double Pointer Example ---\n");
+    demonstrate_double_pointer();
+    // Expected output: Value from double pointer allocation: 456
     printf("\n");
 
     /* RESTRICT POINTER DEMONSTRATION */
-    printf("--- Restrict Pointer Example (No malloc) ---\n");
-    demonstrate_restrict_pointer_no_malloc();
-    // Expected output: Summed array (no malloc): 3 7 11 15
+    printf("--- Restrict Pointer Example ---\n");
+    demonstrate_restrict_pointer();
+    // Expected output: Summed array: 11 22 33 44 55
     printf("\n");
 
-    return 0; // When main returns, all Stack memory is automatically reclaimed.
+    return 0; // When main returns, Stack memory is automatically reclaimed; Heap memory was freed manually.
 }
